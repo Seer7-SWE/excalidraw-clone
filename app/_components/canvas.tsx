@@ -15,6 +15,9 @@ import { useFreehand } from "@/hooks/use-freehand";
 import { getSvgPathFromStroke, getElementAtPosition, eraseElement, getCoordinates } from "@/utils";
 import { DrawnElementType, ShapesType } from "@/types";
 import { cursorState, strokeWidthState, toolState } from "@/state";
+import { Button } from "@/components/ui/button";
+import { Redo2, Undo2 } from "lucide-react";
+import { useUndoRedo } from "@/hooks/use-undo-redo";
 
 export type PositionStatusType = "inside" | "outside" | "boundary";
 
@@ -98,7 +101,7 @@ export const Canvas = () => {
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
     const [roughCanvas, setRoughCanvas] = useState<RoughCanvas | null>(null);
 
-    const [drawnElements, setDrawnElements] = useState<DrawnElementType[]>([]);
+    // const [drawnElements, setDrawnElements] = useState<DrawnElementType[]>([]);
     const [selectedItem, setSelectedItem] = useState<DrawnElementType | null>(null);
 
     const [selectedTool, setSelectedTool] = useRecoilState(toolState);
@@ -110,6 +113,8 @@ export const Canvas = () => {
         useShapeDrawing(roughCanvas);
 
     const { drawFreehand, isDrawing, startFreehandDrawing, stopFreehandDrawing } = useFreehand();
+
+    const { undo, redo, push, state: drawnElements, canUndo, canRedo } = useUndoRedo([]);
 
     const updateElementPosition = (
         id: number,
@@ -125,7 +130,8 @@ export const Canvas = () => {
         const drawnElementsCopy = [...drawnElements];
         if (updatedShape) {
             drawnElementsCopy[id] = updatedShape;
-            setDrawnElements(drawnElementsCopy);
+            // setDrawnElements(drawnElementsCopy);
+            push(drawnElementsCopy, true);
         }
     };
 
@@ -135,7 +141,8 @@ export const Canvas = () => {
 
         const shape = startDrawingShapes(newId, clientX, clientY, clientX, clientY, shapeType);
         if (shape) {
-            setDrawnElements((prev) => [...prev, shape]);
+            // setDrawnElements((prev) => [...prev, shape]);
+            push([...drawnElements, shape]);
         }
     };
 
@@ -163,6 +170,7 @@ export const Canvas = () => {
 
                 setSelectedItem({ ...element, offsetX, offsetY });
                 prevSelectedItem.current = element;
+                push(drawnElements);
             }
         },
         draw: (event: React.MouseEvent) => {
@@ -181,7 +189,8 @@ export const Canvas = () => {
             };
 
             startFreehandDrawing();
-            setDrawnElements((prev) => [...prev, pencilDrawnElement]);
+            // setDrawnElements((prev) => [...prev, pencilDrawnElement]);
+            push([...drawnElements, pencilDrawnElement]);
         },
         erase: (event: React.MouseEvent) => {
             const { clientX, clientY } = event;
@@ -189,7 +198,8 @@ export const Canvas = () => {
             const elementToErase = getElementAtPosition(clientX, clientY, drawnElements);
             if (elementToErase.positionStatus === "boundary") {
                 const updatedDrawnElements = eraseElement(elementToErase.element, drawnElements);
-                setDrawnElements(updatedDrawnElements);
+                // setDrawnElements(updatedDrawnElements);
+                push(updatedDrawnElements);
             }
         },
         rectangle: (event: React.MouseEvent) => handleShapeDraw("rectangle", event),
@@ -233,7 +243,8 @@ export const Canvas = () => {
             const drawnElementsCopy = [...drawnElements];
             if (updatedShape) {
                 drawnElementsCopy[index] = updatedShape;
-                setDrawnElements(drawnElementsCopy);
+                // setDrawnElements(drawnElementsCopy);
+                push(drawnElementsCopy, true);
             }
         } else if (panning) {
             doPan(event);
@@ -245,7 +256,8 @@ export const Canvas = () => {
             const drawnElementsCopy = [...drawnElements];
             if (updatedShape) {
                 drawnElementsCopy[index] = updatedShape;
-                setDrawnElements(drawnElementsCopy);
+                // setDrawnElements(drawnElementsCopy);
+                push(drawnElementsCopy, true);
             }
         } else if (selectedTool === "select" && selectedItem) {
             //  Moving an already drawn element
@@ -277,6 +289,14 @@ export const Canvas = () => {
                 roughElement?.options
             );
         }
+    };
+
+    const onUndo = () => {
+        undo();
+    };
+
+    const onRedo = () => {
+        redo();
     };
 
     useLayoutEffect(() => {
@@ -339,15 +359,38 @@ export const Canvas = () => {
     }, [cursorStyle]);
 
     return (
-        <canvas
-            id="canvas"
-            ref={canvasRef}
-            className="w-full h-full bg-white absolute z-[1]"
-            onMouseDown={onMouseDown}
-            onMouseUp={onMouseUp}
-            onMouseMove={onMouseMove}
-            width={window.innerWidth}
-            height={window.innerHeight}
-        />
+        <>
+            <canvas
+                id="canvas"
+                ref={canvasRef}
+                className="w-full h-full bg-white absolute z-[1]"
+                onMouseDown={onMouseDown}
+                onMouseUp={onMouseUp}
+                onMouseMove={onMouseMove}
+                width={window.innerWidth}
+                height={window.innerHeight}
+            />
+
+            <div className="absolute z-50 bottom-4 left-4">
+                <Button
+                    disabled={!canUndo}
+                    onClick={onUndo}
+                    className="bg-neutral-200"
+                    size="sm"
+                    variant={"outline"}
+                >
+                    <Undo2 className="w-4 h-4" />
+                </Button>
+                <Button
+                    disabled={!canRedo}
+                    onClick={onRedo}
+                    className="bg-neutral-200"
+                    size="sm"
+                    variant={"outline"}
+                >
+                    <Redo2 className="w-4 h-4" />
+                </Button>
+            </div>
+        </>
     );
 };
