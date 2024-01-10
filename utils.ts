@@ -86,9 +86,14 @@ export const eraseElement = (toErase: DrawnElementType, from: DrawnElementType[]
     return from.filter(({ id }) => id !== toEraseId);
 };
 
-export const getCoordinates = (event: any, panOffset: { x: number; y: number }) => {
-    const clientX = event.clientX - panOffset.x;
-    const clientY = event.clientY - panOffset.y;
+export const getCoordinates = (
+    event: any,
+    panOffset: { x: number; y: number },
+    scale: number,
+    scaleOffset: { x: number; y: number }
+) => {
+    const clientX = (event.clientX - panOffset.x * scale + scaleOffset.x) / scale;
+    const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
 
     return { clientX, clientY };
 };

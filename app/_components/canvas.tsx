@@ -16,8 +16,9 @@ import { getSvgPathFromStroke, getElementAtPosition, eraseElement, getCoordinate
 import { DrawnElementType, ShapesType } from "@/types";
 import { cursorState, strokeWidthState, toolState } from "@/state";
 import { Button } from "@/components/ui/button";
-import { Redo2, Undo2 } from "lucide-react";
+import { Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
+import { useZoom } from "@/hooks/use-zoom";
 
 export type PositionStatusType = "inside" | "outside" | "boundary";
 
@@ -115,6 +116,7 @@ export const Canvas = () => {
     const { drawFreehand, isDrawing, startFreehandDrawing, stopFreehandDrawing } = useFreehand();
 
     const { undo, redo, push, state: drawnElements, canUndo, canRedo } = useUndoRedo([]);
+    const { zoomIn, zoomOut, scale, scaleOffset, setScaleOffset, resetZoom } = useZoom();
 
     const updateElementPosition = (
         id: number,
@@ -136,7 +138,7 @@ export const Canvas = () => {
     };
 
     const handleShapeDraw = (shapeType: ShapesType, event: React.MouseEvent) => {
-        const { clientX, clientY } = event;
+        const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
         const newId = drawnElements.length;
 
         const shape = startDrawingShapes(newId, clientX, clientY, clientX, clientY, shapeType);
@@ -149,7 +151,7 @@ export const Canvas = () => {
     const handleMouseDown = {
         pan: startPanning,
         select: (event: React.MouseEvent) => {
-            const { clientX, clientY } = event;
+            const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
 
             const { positionStatus, element } = getElementAtPosition(
                 clientX,
@@ -174,7 +176,7 @@ export const Canvas = () => {
             }
         },
         draw: (event: React.MouseEvent) => {
-            const { clientX, clientY } = event;
+            const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
             const newId = drawnElements.length;
 
             const pencilDraw = drawFreehand(newId, clientX, clientY);
@@ -193,7 +195,7 @@ export const Canvas = () => {
             push([...drawnElements, pencilDrawnElement]);
         },
         erase: (event: React.MouseEvent) => {
-            const { clientX, clientY } = event;
+            const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
 
             const elementToErase = getElementAtPosition(clientX, clientY, drawnElements);
             if (elementToErase.positionStatus === "boundary") {
@@ -226,7 +228,7 @@ export const Canvas = () => {
 
     const onMouseMove = (event: React.MouseEvent) => {
         // Make it like onMouseDown
-        const { clientX, clientY } = getCoordinates(event, panOffset);
+        const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
         if (drawnElements.length < 0) return;
 
         if (isDrawing) {
@@ -308,8 +310,17 @@ export const Canvas = () => {
 
         if (ctx) {
             ctx.clearRect(0, 0, canv.width, canv.height);
+
+            const scaledWidth = canv.width * scale;
+            const scaledHeight = canv.height * scale;
+
+            const scaledOffsetX = (scaledWidth - canv.width) / 2;
+            const scaledOffsetY = (scaledHeight - canv.height) / 2;
+            setScaleOffset({ x: scaledOffsetX, y: scaledOffsetY });
+
             ctx.save();
-            ctx.translate(panOffset.x, panOffset.y);
+            ctx.translate(panOffset.x * scale - scaledOffsetX, panOffset.y * scale - scaledOffsetY);
+            ctx.scale(scale, scale);
 
             drawnElements.forEach((element) => {
                 drawOnCanvas(element, roughCanv, ctx);
@@ -317,7 +328,7 @@ export const Canvas = () => {
 
             ctx.restore();
         }
-    }, [panOffset.x, panOffset.y, drawnElements, strokeWidth]);
+    }, [panOffset.x, panOffset.y, drawnElements, strokeWidth, scale, setScaleOffset]);
 
     useEffect(() => {
         if (canvasRef.current) {
@@ -371,25 +382,49 @@ export const Canvas = () => {
                 height={window.innerHeight}
             />
 
-            <div className="absolute z-50 bottom-4 left-4">
-                <Button
-                    disabled={!canUndo}
-                    onClick={onUndo}
-                    className="bg-neutral-200"
-                    size="sm"
-                    variant={"outline"}
-                >
-                    <Undo2 className="w-4 h-4" />
-                </Button>
-                <Button
-                    disabled={!canRedo}
-                    onClick={onRedo}
-                    className="bg-neutral-200"
-                    size="sm"
-                    variant={"outline"}
-                >
-                    <Redo2 className="w-4 h-4" />
-                </Button>
+            <div className="absolute z-50 bottom-4 left-4 space-x-4 flex items-center">
+                <div className="flex items-center space-x-2">
+                    <Button
+                        onClick={zoomIn}
+                        className="bg-neutral-200"
+                        size="sm"
+                        variant={"outline"}
+                    >
+                        <ZoomIn className="w-4 h-4" />
+                    </Button>
+                    <p className="text-sm cursor-pointer" onClick={resetZoom}>
+                        {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
+                    </p>
+                    <Button
+                        onClick={zoomOut}
+                        className="bg-neutral-200"
+                        size="sm"
+                        variant={"outline"}
+                    >
+                        <ZoomOut className="w-4 h-4" />
+                    </Button>
+                </div>
+
+                <div>
+                    <Button
+                        disabled={!canUndo}
+                        onClick={onUndo}
+                        className="bg-neutral-200"
+                        size="sm"
+                        variant={"outline"}
+                    >
+                        <Undo2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        disabled={!canRedo}
+                        onClick={onRedo}
+                        className="bg-neutral-200"
+                        size="sm"
+                        variant={"outline"}
+                    >
+                        <Redo2 className="w-4 h-4" />
+                    </Button>
+                </div>
             </div>
         </>
     );
