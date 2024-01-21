@@ -7,12 +7,14 @@ export const useZoom = () => {
 
     const zoomIn = () => {
         if (scale < 2) {
+            console.log("zoom in");
             setScale((prev) => prev + 0.1);
         }
     };
 
     const zoomOut = () => {
         if (scale > 0.5) {
+            console.log("zoom out");
             setScale((prev) => prev - 0.1);
         }
     };

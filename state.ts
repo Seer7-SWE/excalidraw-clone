@@ -3,7 +3,15 @@
 import { atom } from "recoil";
 
 // Types
-import { CursorStateType, StrokeStyleType, StrokeWidthType, ToolType } from "./types";
+import {
+    CursorStateType,
+    FontFamilyType,
+    FontSizeType,
+    StrokeStyleType,
+    StrokeWidthType,
+    TextAlignType,
+    ToolType,
+} from "./types";
 
 export const backgroundColorState = atom({
     key: "backgroundColor",
@@ -33,4 +41,19 @@ export const toolState = atom<ToolType>({
 export const cursorState = atom<CursorStateType>({
     key: "cursorState",
     default: "default",
+});
+
+export const fontSizeState = atom<FontSizeType>({
+    key: "fontSizeState",
+    default: 18,
+});
+
+export const fontFamilyState = atom<FontFamilyType>({
+    key: "fontFamilyState",
+    default: "__Epilogue_063c31, __Epilogue_Fallback_063c31",
+});
+
+export const textAlignState = atom<TextAlignType>({
+    key: "textAlignState",
+    default: "left",
 });

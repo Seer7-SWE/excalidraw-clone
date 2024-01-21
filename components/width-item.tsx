@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 interface WidthItemProps<ValueType> {
     data: {
         value: ValueType;
-        icon: JSX.Element;
+        icon: JSX.Element | string;
         active: boolean;
     };
     onClick: (value: ValueType) => void;

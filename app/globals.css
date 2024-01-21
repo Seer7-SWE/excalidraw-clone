@@ -101,6 +101,10 @@ body[cursor-style="not-allowed"] {
     cursor: not-allowed;
 }
 
+body[cursor-style="text"] {
+    cursor: text;
+}
+
 /* Color item */
 button.color-item:hover::after {
     content: "";

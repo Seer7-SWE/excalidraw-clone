@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { useRecoilState } from "recoil";
+import { selector, useRecoilState } from "recoil";
 
 import { ResolvedOptions } from "roughjs/bin/core";
 import { RoughCanvas } from "roughjs/bin/canvas";
@@ -14,11 +14,19 @@ import { useFreehand } from "@/hooks/use-freehand";
 
 import { getSvgPathFromStroke, getElementAtPosition, eraseElement, getCoordinates } from "@/utils";
 import { DrawnElementType, ShapesType } from "@/types";
-import { cursorState, strokeWidthState, toolState } from "@/state";
-import { Button } from "@/components/ui/button";
-import { Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import {
+    cursorState,
+    fontFamilyState,
+    fontSizeState,
+    strokeWidthState,
+    textAlignState,
+    toolState,
+} from "@/state";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { useZoom } from "@/hooks/use-zoom";
+import { Zoom } from "@/components/zoom";
+import { UndoRedo } from "@/components/undo-redo";
+import { cn } from "@/lib/utils";
 
 export type PositionStatusType = "inside" | "outside" | "boundary";
 
@@ -73,6 +81,7 @@ export const drawOnCanvas = (
         case "line":
         case "rectangle":
         case "square":
+        case "arrow":
             if (element.roughElement !== undefined) {
                 roughCanvas.draw(element.roughElement);
             }
@@ -90,6 +99,28 @@ export const drawOnCanvas = (
             }
 
             break;
+        case "text":
+            if (element.textValue) {
+                const fontSize = element.fontSize ? element.fontSize : 18;
+                context.textBaseline = "top";
+                context.textAlign = element.textAlign || "left";
+                context.font = `${fontSize}px ${element.fontFamily}`;
+
+                // TODO: Make this accurate
+
+                // Split the text into lines
+                // const lines = element.textValue.split("\n");
+
+                // // Draw each line separately
+                // for (let i = 0; i < lines.length; i++) {
+                //     context.fillText(lines[i], element.x1 - 1.5, element.y1 + 5.7 + i * fontSize);
+                // }
+
+                context.fillText(element.textValue, element.x1 - 1.5, element.y1 + 5.7);
+            }
+
+            break;
+
         default:
             throw new Error(`Shape not recognised ${element.shape}`);
     }
@@ -98,16 +129,29 @@ export const drawOnCanvas = (
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const prevSelectedItem = useRef<DrawnElementType | null>(null);
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
     const [roughCanvas, setRoughCanvas] = useState<RoughCanvas | null>(null);
+    const [selectedItem, setSelectedItem] = useState<
+        (DrawnElementType & { offsetsX?: number[]; offsetsY?: number[] }) | null
+    >(null);
 
-    // const [drawnElements, setDrawnElements] = useState<DrawnElementType[]>([]);
-    const [selectedItem, setSelectedItem] = useState<DrawnElementType | null>(null);
+    const [scale, setScale] = useState(1);
+    const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
+
+    const [isWriting, setIsWriting] = useState<boolean>(false);
+    const [textareaPosition, setTextareaPosition] = useState<{ x: number; y: number }>({
+        x: 0,
+        y: 0,
+    });
 
     const [selectedTool, setSelectedTool] = useRecoilState(toolState);
     const [strokeWidth, ___] = useRecoilState(strokeWidthState);
     const [cursorStyle, _] = useRecoilState(cursorState);
+
+    const [fontFamily, setFontFam] = useRecoilState(fontFamilyState);
+    const [fontSize, setFontSize] = useRecoilState(fontSizeState);
 
     const { panning, doPan, startPanning, stopPanning, panOffset } = usePanning(canvasRef);
     const { startDrawingShapes, stopDrawingShapes, drawShapes, isDrawingShapes } =
@@ -116,7 +160,7 @@ export const Canvas = () => {
     const { drawFreehand, isDrawing, startFreehandDrawing, stopFreehandDrawing } = useFreehand();
 
     const { undo, redo, push, state: drawnElements, canUndo, canRedo } = useUndoRedo([]);
-    const { zoomIn, zoomOut, scale, scaleOffset, setScaleOffset, resetZoom } = useZoom();
+    // const { scaleOffset, setScaleOffset, scale } = useZoom();
 
     const updateElementPosition = (
         id: number,
@@ -148,6 +192,69 @@ export const Canvas = () => {
         }
     };
 
+    const drawText = () => {
+        if (textareaRef.current) {
+            const textValue = textareaRef.current.value;
+
+            let textElement: DrawnElementType = {
+                id: drawnElements.length,
+                x1: textareaPosition.x,
+                y1: textareaPosition.y,
+                x2: textareaPosition.x,
+                y2: textareaPosition.y,
+                shape: "text",
+                roughElement: undefined,
+                textValue,
+                fontSize,
+                fontFamily,
+            };
+
+            if (prevSelectedItem.current) {
+                textElement.id = prevSelectedItem.current.id;
+                textElement.x1 = prevSelectedItem.current.x1;
+                textElement.y1 = prevSelectedItem.current.y1;
+                textElement.x2 = prevSelectedItem.current.x2;
+                textElement.y2 = prevSelectedItem.current.y2;
+
+                const drawnElementsCopy = [...drawnElements];
+                if (textElement) {
+                    drawnElementsCopy[prevSelectedItem.current.id] = textElement;
+                    push(drawnElementsCopy);
+                }
+            } else {
+                push([...drawnElements, textElement]);
+            }
+        }
+    };
+
+    const handleBlur = () => {
+        drawText();
+
+        setIsWriting(false);
+        setTextareaPosition({ x: 0, y: 0 });
+    };
+
+    const handleWritingText = (event: React.MouseEvent) => {
+        setIsWriting(true);
+
+        // If there is already a textelement where clicking
+        const { positionStatus, element } = getElementAtPosition(
+            event.clientX,
+            event.clientY,
+            drawnElements,
+            context
+        );
+
+        if (positionStatus === "boundary" && element) {
+            // select the previous element!!
+            prevSelectedItem.current = element;
+        } else {
+            prevSelectedItem.current = null;
+        }
+
+        setTextareaPosition({ x: event.clientX, y: event.clientY });
+    };
+
     const handleMouseDown = {
         pan: startPanning,
         select: (event: React.MouseEvent) => {
@@ -156,12 +263,18 @@ export const Canvas = () => {
             const { positionStatus, element } = getElementAtPosition(
                 clientX,
                 clientY,
-                drawnElements
+                drawnElements,
+                context
             );
 
-            console.log({ positionStatus, element });
+            if (element?.shape === "pencil") {
+                if (!element.points) return;
 
-            if (positionStatus === "boundary" && roughCanvas) {
+                const offsetsX = element.points.map((point) => clientX - point.x);
+                const offsetsY = element.points.map((point) => clientY - point.y);
+
+                setSelectedItem({ ...element, offsetsX, offsetsY });
+            } else if (positionStatus === "boundary" && roughCanvas) {
                 // Select the item
                 const offsetX = clientX - element.x1;
                 const offsetY = clientY - element.y1;
@@ -171,9 +284,10 @@ export const Canvas = () => {
                 // setDrawnElements(newItems);
 
                 setSelectedItem({ ...element, offsetX, offsetY });
-                prevSelectedItem.current = element;
-                push(drawnElements);
             }
+
+            prevSelectedItem.current = element;
+            push(drawnElements);
         },
         draw: (event: React.MouseEvent) => {
             const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
@@ -197,7 +311,7 @@ export const Canvas = () => {
         erase: (event: React.MouseEvent) => {
             const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
 
-            const elementToErase = getElementAtPosition(clientX, clientY, drawnElements);
+            const elementToErase = getElementAtPosition(clientX, clientY, drawnElements, context);
             if (elementToErase.positionStatus === "boundary") {
                 const updatedDrawnElements = eraseElement(elementToErase.element, drawnElements);
                 // setDrawnElements(updatedDrawnElements);
@@ -207,11 +321,19 @@ export const Canvas = () => {
         rectangle: (event: React.MouseEvent) => handleShapeDraw("rectangle", event),
         circle: (event: React.MouseEvent) => handleShapeDraw("circle", event),
         line: (event: React.MouseEvent) => handleShapeDraw("line", event),
+        text: (event: React.MouseEvent) => handleWritingText(event),
+        arrow: (event: React.MouseEvent) => handleShapeDraw("arrow", event),
     };
 
     const onMouseDown = (event: React.MouseEvent) => {
-        event.preventDefault();
-        handleMouseDown[selectedTool](event);
+        setTimeout(() => {
+            // Using settimeout to make blur event fires before this
+            event.preventDefault();
+
+            if (isWriting && selectedTool !== "select") return; // If already writing
+
+            handleMouseDown[selectedTool](event);
+        }, 0);
     };
 
     const onMouseUp = (event: React.MouseEvent) => {
@@ -273,23 +395,59 @@ export const Canvas = () => {
                 offsetX = 0,
                 offsetY = 0,
                 roughElement,
+                textValue,
+                fontFamily,
+                fontSize,
             } = selectedItem;
 
-            const width = x2 - x1;
-            const height = y2 - y1;
+            if (shape === "pencil") {
+                if (!selectedItem.points) return;
+                const newPoints = selectedItem.points.map((_, idx) => {
+                    if (selectedItem.offsetsX && selectedItem.offsetsY) {
+                        return {
+                            x: clientX - selectedItem.offsetsX[idx],
+                            y: clientY - selectedItem.offsetsY[idx],
+                        };
+                    }
+                    return { x: clientX, y: clientY };
+                });
 
-            const newX1 = clientX - offsetX;
-            const newY1 = clientY - offsetY;
+                const drawnElementsCopy = [...drawnElements];
+                drawnElementsCopy[selectedItem.id] = {
+                    ...drawnElementsCopy[selectedItem.id],
+                    points: newPoints,
+                };
 
-            updateElementPosition(
-                id,
-                newX1,
-                newY1,
-                newX1 + width,
-                newY1 + height,
-                shape,
-                roughElement?.options
-            );
+                push(drawnElementsCopy, true);
+            } else if (shape === "text") {
+                const updatedTextElement = {
+                    ...selectedItem,
+                    x1: clientX - offsetX,
+                    x2: clientX,
+                    y1: clientY - offsetY,
+                    y2: clientY,
+                };
+
+                const drawnElementsCopy = [...drawnElements];
+                drawnElementsCopy[selectedItem.id] = updatedTextElement;
+                push(drawnElementsCopy, true);
+            } else {
+                const width = x2 - x1;
+                const height = y2 - y1;
+
+                const newX1 = clientX - offsetX;
+                const newY1 = clientY - offsetY;
+
+                updateElementPosition(
+                    id,
+                    newX1,
+                    newY1,
+                    newX1 + width,
+                    newY1 + height,
+                    shape,
+                    roughElement?.options
+                );
+            }
         }
     };
 
@@ -299,6 +457,24 @@ export const Canvas = () => {
 
     const onRedo = () => {
         redo();
+    };
+
+    const zoomIn = () => {
+        if (scale < 2) {
+            console.log("zoom in");
+            setScale((prev) => prev + 0.1);
+        }
+    };
+
+    const zoomOut = () => {
+        if (scale > 0.5) {
+            console.log("zoom out");
+            setScale((prev) => prev - 0.1);
+        }
+    };
+
+    const resetZoom = () => {
+        setScale(1);
     };
 
     useLayoutEffect(() => {
@@ -369,12 +545,26 @@ export const Canvas = () => {
         document.body.setAttribute("cursor-style", cursorStyle);
     }, [cursorStyle]);
 
+    useEffect(() => {
+        if (selectedTool === "text") {
+            textareaRef?.current?.focus();
+        }
+    }, [selectedTool]);
+
+    useEffect(() => {
+        if (textareaRef.current) {
+            textareaRef.current.focus();
+
+            textareaRef.current.value = prevSelectedItem.current?.textValue || "";
+        }
+    }, [isWriting]);
+
     return (
         <>
             <canvas
                 id="canvas"
                 ref={canvasRef}
-                className="w-full h-full bg-white absolute z-[1]"
+                className="w-screen h-screen bg-white absolute z-[1]"
                 onMouseDown={onMouseDown}
                 onMouseUp={onMouseUp}
                 onMouseMove={onMouseMove}
@@ -382,49 +572,38 @@ export const Canvas = () => {
                 height={window.innerHeight}
             />
 
-            <div className="absolute z-50 bottom-4 left-4 space-x-4 flex items-center">
-                <div className="flex items-center space-x-2">
-                    <Button
-                        onClick={zoomIn}
-                        className="bg-neutral-200"
-                        size="sm"
-                        variant={"outline"}
-                    >
-                        <ZoomIn className="w-4 h-4" />
-                    </Button>
-                    <p className="text-sm cursor-pointer" onClick={resetZoom}>
-                        {new Intl.NumberFormat("en-GB", { style: "percent" }).format(scale)}
-                    </p>
-                    <Button
-                        onClick={zoomOut}
-                        className="bg-neutral-200"
-                        size="sm"
-                        variant={"outline"}
-                    >
-                        <ZoomOut className="w-4 h-4" />
-                    </Button>
-                </div>
+            {isWriting ? (
+                <textarea
+                    ref={textareaRef}
+                    className="fixed z-10   outline-none"
+                    style={{
+                        top: prevSelectedItem?.current?.y1
+                            ? prevSelectedItem.current.y1 + 2
+                            : textareaPosition.y,
+                        left: prevSelectedItem?.current?.x1
+                            ? prevSelectedItem.current.x1 - 1
+                            : textareaPosition.x,
+                        resize: "none",
+                        height: "auto",
+                        overflow: "hidden",
+                        fontSize,
+                        fontFamily,
+                    }}
+                    onBlur={handleBlur}
 
-                <div>
-                    <Button
-                        disabled={!canUndo}
-                        onClick={onUndo}
-                        className="bg-neutral-200"
-                        size="sm"
-                        variant={"outline"}
-                    >
-                        <Undo2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                        disabled={!canRedo}
-                        onClick={onRedo}
-                        className="bg-neutral-200"
-                        size="sm"
-                        variant={"outline"}
-                    >
-                        <Redo2 className="w-4 h-4" />
-                    </Button>
-                </div>
+                    // For infinite expanding effect
+                    // onInput={handleInput}
+
+                    // const handleInput = (e) => {
+                    //     e.target.style.height = 'auto';
+                    //     e.target.style.height = (e.target.scrollHeight) + 'px';
+                    // };
+                />
+            ) : null}
+
+            <div className="absolute z-50 bottom-4 left-4 space-x-4 flex items-center">
+                <Zoom scale={scale} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} />
+                <UndoRedo canRedo={canRedo} canUndo={canUndo} onUndo={onUndo} onRedo={onRedo} />
             </div>
         </>
     );

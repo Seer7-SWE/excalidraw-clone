@@ -20,10 +20,13 @@ export const getSvgPathFromStroke = (stroke: number[][]) => {
 export const isWithInElement = (
     x: number,
     y: number,
-    element: DrawnElementType
+    element: DrawnElementType,
+    context: CanvasRenderingContext2D | null = null
 ): PositionStatusType => {
     let { shape, x1, x2, y1, y2 } = element;
     const tolerance = 10;
+
+    const textTolerance = 5;
 
     // Ensure x1/y1 is the top-left corner and x2/y2 is the bottom-right
     if (x1 > x2) [x1, x2] = [x2, x1];
@@ -31,6 +34,7 @@ export const isWithInElement = (
 
     switch (shape) {
         case "line":
+        case "arrow":
             const m = (y2 - y1) / (x2 - x1);
             const c = y1 - m * x1;
             const dist = Math.abs(y - (m * x + c));
@@ -62,6 +66,38 @@ export const isWithInElement = (
                 Math.pow(y - centerY, 2) / Math.pow(radiusY + tolerance, 2);
             return outerEllipseValue <= 1 ? (ellipseValue > 1 ? "boundary" : "inside") : "outside";
 
+        case "pencil":
+            if (!element.points) return "outside";
+
+            const isOnPath = element.points.some((point, index) => {
+                if (!element.points) return "outside";
+
+                if (index === element.points.length - 1) return false;
+                const nextPoint = element.points[index + 1];
+                const a = { x: point.x, y: point.y };
+                const b = { x: nextPoint.x, y: nextPoint.y };
+                const c = { x, y };
+                const offset =
+                    Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2)) -
+                    (Math.sqrt(Math.pow(c.x - a.x, 2) + Math.pow(c.y - a.y, 2)) +
+                        Math.sqrt(Math.pow(b.x - c.x, 2) + Math.pow(b.y - c.y, 2)));
+                return Math.abs(offset) < 5;
+            });
+            return isOnPath ? "boundary" : "outside";
+
+        case "text":
+            if (!element.textValue) return "outside";
+
+            const textWidth = context?.measureText(element.textValue).width;
+            const textHeight = (element?.fontSize || 24) * 1.2;
+
+            return x >= x1 - textTolerance &&
+                x <= x2 + (textWidth || 0) + textTolerance &&
+                y >= y1 - textTolerance &&
+                y <= y2 + textHeight + textTolerance
+                ? "boundary"
+                : "outside";
+
         default:
             return "outside";
     }
@@ -70,10 +106,12 @@ export const isWithInElement = (
 export const getElementAtPosition = (
     x: number,
     y: number,
-    elements: DrawnElementType[]
+    elements: DrawnElementType[],
+    context: CanvasRenderingContext2D | null
 ): ElementAtPosition => {
     for (let element of elements) {
-        const positionStatus = isWithInElement(x, y, element);
+        const positionStatus = isWithInElement(x, y, element, context);
+
         if (positionStatus !== "outside") {
             return { positionStatus, element };
         }
