@@ -23,7 +23,7 @@ The app currently supports the following features:
 - **Freehand Drawing**: Unleash creativity with the freehand drawing tool.
 - **Customization**: Adjust stroke width, color, and background color to suit preferences.
 - **Text on Canvas**: Add text annotations directly on the canvas.
-- **Pan and Zoom**: Unlimited panning and zoom. 
+- **Zoom**: Zoom in and Zoom out of canvas. 
 
 ## Upcoming Features
 
