@@ -33,8 +33,8 @@ There are plans to improve the app and add new features. Here are some of the en
 - **Resizing Items**: Adjust the size of drawn objects with a highlighted feature.
 - **More Shapes**: Adding more shape options such diamonds.
 - **Image on Canvas**: Import images onto the canvas for reference or enhancement.
-- **Realtime colaboration**: live collaboration with other users.
-- 
+- **Realtime collaboration**: live collaboration with other users.
+  
 
 Stay tuned for these exciting updates!
 
