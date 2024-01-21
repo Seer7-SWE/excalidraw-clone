@@ -1,6 +1,6 @@
 # Excalidraw Clone App
 
-Welcome to the Excalidraw Clone App! This application is a portfolio project designed to showcase a simple and intuitive interface for creating and editing drawings. 
+Welcome to the Excalidraw Clone App!. 
 
 ![App-Poster](./assets/excalidraw-clone-poster.jpeg)
 
