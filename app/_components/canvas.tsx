@@ -196,12 +196,19 @@ export const Canvas = () => {
         if (textareaRef.current) {
             const textValue = textareaRef.current.value;
 
+            const { clientX, clientY } = getCoordinates(
+                { clientX: textareaPosition.x, clientY: textareaPosition.y },
+                panOffset,
+                scale,
+                scaleOffset
+            );
+
             let textElement: DrawnElementType = {
                 id: drawnElements.length,
-                x1: textareaPosition.x,
-                y1: textareaPosition.y,
-                x2: textareaPosition.x,
-                y2: textareaPosition.y,
+                x1: clientX,
+                y1: clientY,
+                x2: clientX,
+                y2: clientY,
                 shape: "text",
                 roughElement: undefined,
                 textValue,
@@ -236,7 +243,6 @@ export const Canvas = () => {
 
     const handleWritingText = (event: React.MouseEvent) => {
         setIsWriting(true);
-
         // If there is already a textelement where clicking
         const { positionStatus, element } = getElementAtPosition(
             event.clientX,
@@ -481,6 +487,9 @@ export const Canvas = () => {
         const canv = document.getElementById("canvas") as HTMLCanvasElement;
         const ctx = canv.getContext("2d");
 
+        canv.width = window.innerWidth;
+        canv.height = window.innerHeight;
+
         let roughCanv = rough.canvas(canv);
         setRoughCanvas(roughCanv);
 
@@ -568,14 +577,12 @@ export const Canvas = () => {
                 onMouseDown={onMouseDown}
                 onMouseUp={onMouseUp}
                 onMouseMove={onMouseMove}
-                width={window.innerWidth}
-                height={window.innerHeight}
             />
 
             {isWriting ? (
                 <textarea
                     ref={textareaRef}
-                    className="fixed z-10   outline-none"
+                    className="fixed z-10 bg-transparent   outline-none"
                     style={{
                         top: prevSelectedItem?.current?.y1
                             ? prevSelectedItem.current.y1 + 2
