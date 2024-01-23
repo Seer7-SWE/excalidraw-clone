@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { selector, useRecoilState } from "recoil";
 
 import { ResolvedOptions } from "roughjs/bin/core";
@@ -27,49 +27,13 @@ import { useZoom } from "@/hooks/use-zoom";
 import { Zoom } from "@/components/zoom";
 import { UndoRedo } from "@/components/undo-redo";
 import { cn } from "@/lib/utils";
+import { SelectionBox } from "@/components/selection-box";
 
 export type PositionStatusType = "inside" | "outside" | "boundary";
 
 export type ElementAtPosition =
     | { positionStatus: "inside" | "boundary"; element: DrawnElementType }
     | { positionStatus: "outside"; element: null };
-
-// const highlightSelectedItem = (
-//     selectedItem: DrawnElementType,
-//     roughCanvas: RoughCanvas,
-//     // previouslySelectedItem?: DrawnElementType,
-//     allItems: DrawnElementType[]
-// ) => {
-//     // if (previouslySelectedItem) {
-//     //     const { x1: prevX1, y1: prevY1, x2: prevX2, y2: prevY2 } = previouslySelectedItem;
-//     //     context.clearRect(prevX1 - 5, prevY1 - 5, prevX2 - prevX1 + 10, prevY2 - prevY1 + 10);
-//     // }
-//     const { x1, y1, x2, y2 } = selectedItem;
-
-//     const newX1 = x1 - 10;
-//     const newY1 = y1 - 10;
-//     const newX2 = x2 - 10;
-//     const newY2 = y2 - 10;
-
-//     const rect = roughCanvas.generator.rectangle(newX1, newY1, newX2, newY2, {
-//         stroke: "#000",
-//         strokeWidth: 3,
-//     });
-
-//     const highlightedItem: DrawnElementType = {
-//         id: allItems.length,
-//         x1: newX1,
-//         y1: newY1,
-//         x2: newX2,
-//         y2: newY2,
-//         roughElement: rect,
-//         shape: "rectangle",
-//         isSelected: true,
-//     };
-
-//     allItems.push(highlightedItem);
-//     return allItems;
-// };
 
 export const drawOnCanvas = (
     element: DrawnElementType,
@@ -146,9 +110,11 @@ export const Canvas = () => {
         y: 0,
     });
 
+    const [isMouseDown, setIsMouseDown] = useState(false);
+
     const [selectedTool, setSelectedTool] = useRecoilState(toolState);
     const [strokeWidth, ___] = useRecoilState(strokeWidthState);
-    const [cursorStyle, _] = useRecoilState(cursorState);
+    const [cursorStyle, setCursorStyle] = useRecoilState(cursorState);
 
     const [fontFamily, setFontFam] = useRecoilState(fontFamilyState);
     const [fontSize, setFontSize] = useRecoilState(fontSizeState);
@@ -160,7 +126,6 @@ export const Canvas = () => {
     const { drawFreehand, isDrawing, startFreehandDrawing, stopFreehandDrawing } = useFreehand();
 
     const { undo, redo, push, state: drawnElements, canUndo, canRedo } = useUndoRedo([]);
-    // const { scaleOffset, setScaleOffset, scale } = useZoom();
 
     const updateElementPosition = (
         id: number,
@@ -176,7 +141,6 @@ export const Canvas = () => {
         const drawnElementsCopy = [...drawnElements];
         if (updatedShape) {
             drawnElementsCopy[id] = updatedShape;
-            // setDrawnElements(drawnElementsCopy);
             push(drawnElementsCopy, true);
         }
     };
@@ -187,7 +151,6 @@ export const Canvas = () => {
 
         const shape = startDrawingShapes(newId, clientX, clientY, clientX, clientY, shapeType);
         if (shape) {
-            // setDrawnElements((prev) => [...prev, shape]);
             push([...drawnElements, shape]);
         }
     };
@@ -290,6 +253,8 @@ export const Canvas = () => {
                 // setDrawnElements(newItems);
 
                 setSelectedItem({ ...element, offsetX, offsetY });
+            } else if (positionStatus === "outside" && !element && selectedItem) {
+                setSelectedItem(null);
             }
 
             prevSelectedItem.current = element;
@@ -332,6 +297,8 @@ export const Canvas = () => {
     };
 
     const onMouseDown = (event: React.MouseEvent) => {
+        setIsMouseDown(true);
+
         setTimeout(() => {
             // Using settimeout to make blur event fires before this
             event.preventDefault();
@@ -343,15 +310,22 @@ export const Canvas = () => {
     };
 
     const onMouseUp = (event: React.MouseEvent) => {
+        setIsMouseDown(false);
+
         if (cursorStyle === "grab") {
             stopPanning();
         } else if (isDrawing) {
             stopFreehandDrawing();
         } else if (isDrawingShapes) {
             stopDrawingShapes();
-        } else if (selectedTool === "select" && selectedItem) {
-            setSelectedItem(null);
+
+            // Set last drawn shape as selected element
+            const lastElement = drawnElements[drawnElements.length - 1];
+            setSelectedItem(lastElement);
         }
+        // else if (selectedTool === "select" && selectedItem) {
+        //     setSelectedItem(null);
+        // }
     };
 
     const onMouseMove = (event: React.MouseEvent) => {
@@ -389,7 +363,7 @@ export const Canvas = () => {
                 // setDrawnElements(drawnElementsCopy);
                 push(drawnElementsCopy, true);
             }
-        } else if (selectedTool === "select" && selectedItem) {
+        } else if (isMouseDown && selectedItem) {
             //  Moving an already drawn element
             const {
                 id,
@@ -558,6 +532,10 @@ export const Canvas = () => {
         if (selectedTool === "text") {
             textareaRef?.current?.focus();
         }
+
+        if (selectedItem) {
+            setSelectedItem(null);
+        }
     }, [selectedTool]);
 
     useEffect(() => {
@@ -573,16 +551,24 @@ export const Canvas = () => {
             <canvas
                 id="canvas"
                 ref={canvasRef}
-                className="w-screen h-screen bg-white absolute z-[1]"
+                className="w-screen h-screen bg-white absolute z-[1] select-none"
                 onMouseDown={onMouseDown}
                 onMouseUp={onMouseUp}
                 onMouseMove={onMouseMove}
             />
 
+            {selectedItem && (
+                <SelectionBox
+                    selectedElementId={selectedItem.id}
+                    drawnElements={drawnElements}
+                    panOffset={panOffset}
+                />
+            )}
+
             {isWriting ? (
                 <textarea
                     ref={textareaRef}
-                    className="fixed z-10 bg-transparent   outline-none"
+                    className="fixed z-10 bg-transparent outline-none"
                     style={{
                         top: prevSelectedItem?.current?.y1
                             ? prevSelectedItem.current.y1 + 2
@@ -598,7 +584,7 @@ export const Canvas = () => {
                     }}
                     onBlur={handleBlur}
 
-                    // For infinite expanding effect
+                    // For infinite expanding effect on textarea
                     // onInput={handleInput}
 
                     // const handleInput = (e) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { atom } from "recoil";
+import { atom, selector } from "recoil";
 
 // Types
 import {
@@ -57,3 +57,12 @@ export const textAlignState = atom<TextAlignType>({
     key: "textAlignState",
     default: "left",
 });
+
+// export const selectionBounds = selector({
+//     key: "SelectionBounds",
+//     get: ({get}) => {
+//         const layers = get(layerState);
+//         const selectedLayers = layer.filter(layer => layer.isSelected)
+//         return boundingBox(selece)
+//     }
+// })

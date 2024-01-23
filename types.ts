@@ -51,3 +51,10 @@ export type FontFamilyType =
     | "__Montserrat_cce811, __Montserrat_Fallback_cce811"
     | "__Roboto_Mono_829659, __Roboto_Mono_Fallback_829659";
 export type TextAlignType = "left" | "center" | "right";
+
+export type XYWH = {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+};
