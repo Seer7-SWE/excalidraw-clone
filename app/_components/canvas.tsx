@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { selector, useRecoilState } from "recoil";
 
 import { ResolvedOptions } from "roughjs/bin/core";
@@ -12,21 +12,19 @@ import { usePanning } from "@/hooks/use-panning";
 import { useShapeDrawing } from "@/hooks/use-shape-drawing";
 import { useFreehand } from "@/hooks/use-freehand";
 
-import { getSvgPathFromStroke, getElementAtPosition, eraseElement, getCoordinates } from "@/utils";
-import { DrawnElementType, ShapesType } from "@/types";
 import {
-    cursorState,
-    fontFamilyState,
-    fontSizeState,
-    strokeWidthState,
-    textAlignState,
-    toolState,
-} from "@/state";
+    getSvgPathFromStroke,
+    getElementAtPosition,
+    eraseElement,
+    getCoordinates,
+    adjustElementCoordinates,
+    onResize,
+} from "@/utils";
+import { DrawnElementType, Position, ShapesType } from "@/types";
+import { fontFamilyState, fontSizeState, strokeWidthState, toolCursorState } from "@/state";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
-import { useZoom } from "@/hooks/use-zoom";
 import { Zoom } from "@/components/zoom";
 import { UndoRedo } from "@/components/undo-redo";
-import { cn } from "@/lib/utils";
 import { SelectionBox } from "@/components/selection-box";
 
 export type PositionStatusType = "inside" | "outside" | "boundary";
@@ -75,7 +73,7 @@ export const drawOnCanvas = (
                 // Split the text into lines
                 // const lines = element.textValue.split("\n");
 
-                // // Draw each line separately
+                // // // Draw each line separately
                 // for (let i = 0; i < lines.length; i++) {
                 //     context.fillText(lines[i], element.x1 - 1.5, element.y1 + 5.7 + i * fontSize);
                 // }
@@ -86,7 +84,7 @@ export const drawOnCanvas = (
             break;
 
         default:
-            throw new Error(`Shape not recognised ${element.shape}`);
+            throw new Error(`Shape not recognized ${element.shape}`);
     }
 };
 
@@ -104,7 +102,13 @@ export const Canvas = () => {
     const [scale, setScale] = useState(1);
     const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
 
+    // TODO: Move them in a single action state
     const [isWriting, setIsWriting] = useState<boolean>(false);
+    const [resizing, setResizing] = useState<{ isResizing: boolean; corner: Position | null }>({
+        isResizing: false,
+        corner: null,
+    });
+
     const [textareaPosition, setTextareaPosition] = useState<{ x: number; y: number }>({
         x: 0,
         y: 0,
@@ -112,9 +116,9 @@ export const Canvas = () => {
 
     const [isMouseDown, setIsMouseDown] = useState(false);
 
-    const [selectedTool, setSelectedTool] = useRecoilState(toolState);
     const [strokeWidth, ___] = useRecoilState(strokeWidthState);
-    const [cursorStyle, setCursorStyle] = useRecoilState(cursorState);
+
+    const [toolCursor, setToolCursor] = useRecoilState(toolCursorState);
 
     const [fontFamily, setFontFam] = useRecoilState(fontFamilyState);
     const [fontSize, setFontSize] = useRecoilState(fontSizeState);
@@ -243,14 +247,10 @@ export const Canvas = () => {
                 const offsetsY = element.points.map((point) => clientY - point.y);
 
                 setSelectedItem({ ...element, offsetsX, offsetsY });
-            } else if (positionStatus === "boundary" && roughCanvas) {
+            } else if (positionStatus === "boundary" || positionStatus === "inside") {
                 // Select the item
                 const offsetX = clientX - element.x1;
                 const offsetY = clientY - element.y1;
-
-                // Implement this
-                // const newItems = highlightSelectedItem(element, roughCanvas, drawnElements);
-                // setDrawnElements(newItems);
 
                 setSelectedItem({ ...element, offsetX, offsetY });
             } else if (positionStatus === "outside" && !element && selectedItem) {
@@ -297,22 +297,24 @@ export const Canvas = () => {
     };
 
     const onMouseDown = (event: React.MouseEvent) => {
+        console.log("mousedown");
+
         setIsMouseDown(true);
 
         setTimeout(() => {
             // Using settimeout to make blur event fires before this
             event.preventDefault();
 
-            if (isWriting && selectedTool !== "select") return; // If already writing
+            if (isWriting && toolCursor.tool !== "select") return; // If already writing
 
-            handleMouseDown[selectedTool](event);
+            handleMouseDown[toolCursor.tool](event);
         }, 0);
     };
 
     const onMouseUp = (event: React.MouseEvent) => {
         setIsMouseDown(false);
 
-        if (cursorStyle === "grab") {
+        if (toolCursor.cursor === "grab") {
             stopPanning();
         } else if (isDrawing) {
             stopFreehandDrawing();
@@ -321,15 +323,66 @@ export const Canvas = () => {
 
             // Set last drawn shape as selected element
             const lastElement = drawnElements[drawnElements.length - 1];
+            const { x1, x2, y1, y2 } = adjustElementCoordinates(lastElement);
+            updateElementPosition(
+                lastElement.id,
+                x1,
+                y1,
+                x2,
+                y2,
+                lastElement.shape,
+                lastElement?.roughElement?.options
+            );
+
+            setToolCursor({ tool: "select", cursor: "default" });
             setSelectedItem(lastElement);
+        } else if (resizing.isResizing) {
+            // * A bug in Resizing
+            // * Mouseup doesnt works properly,
+            // * Add the corners too in getElementWithInPosition
+            // * Use new approach to fix it
+            setResizing({ isResizing: false, corner: null });
         }
-        // else if (selectedTool === "select" && selectedItem) {
-        //     setSelectedItem(null);
-        // }
     };
 
     const onMouseMove = (event: React.MouseEvent) => {
-        // Make it like onMouseDown
+        if (resizing.isResizing && selectedItem) {
+            const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
+
+            const coords = {
+                x1: selectedItem.x1, // This is not accurate TODO: Fix it
+                x2: selectedItem.x2,
+                y1: selectedItem.y1, // This is not accurate TODO: Fix it
+                y2: selectedItem.y2,
+            };
+
+            if (!resizing.corner) return;
+
+            const { x1, x2, y1, y2 } = onResize(resizing.corner, clientX, clientY, coords);
+            updateElementPosition(
+                selectedItem.id,
+                x1,
+                y1,
+                x2,
+                y2,
+                selectedItem.shape,
+                selectedItem.roughElement?.options
+            );
+
+            // Update the selectedItem too
+            const updatedSelectedItem = {
+                ...selectedItem,
+                x1,
+                x2,
+                y1,
+                y2,
+            };
+            setSelectedItem(updatedSelectedItem);
+        }
+
+        if (!isMouseDown) return;
+
+        // Todo Make it like onMouseDown
         const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
         if (drawnElements.length < 0) return;
 
@@ -363,7 +416,7 @@ export const Canvas = () => {
                 // setDrawnElements(drawnElementsCopy);
                 push(drawnElementsCopy, true);
             }
-        } else if (isMouseDown && selectedItem) {
+        } else if (selectedItem) {
             //  Moving an already drawn element
             const {
                 id,
@@ -375,9 +428,6 @@ export const Canvas = () => {
                 offsetX = 0,
                 offsetY = 0,
                 roughElement,
-                textValue,
-                fontFamily,
-                fontSize,
             } = selectedItem;
 
             if (shape === "pencil") {
@@ -428,6 +478,16 @@ export const Canvas = () => {
                     roughElement?.options
                 );
             }
+        }
+    };
+
+    const handleStartResizing = (e: React.MouseEvent, position: Position) => {
+        setResizing({ isResizing: true, corner: position });
+    };
+
+    const handleResize = (e: React.MouseEvent) => {
+        if (resizing.isResizing && selectedItem) {
+            onMouseMove(e);
         }
     };
 
@@ -525,18 +585,16 @@ export const Canvas = () => {
     }, [context]);
 
     useEffect(() => {
-        document.body.setAttribute("cursor-style", cursorStyle);
-    }, [cursorStyle]);
+        document.body.setAttribute("cursor-style", toolCursor.cursor);
 
-    useEffect(() => {
-        if (selectedTool === "text") {
-            textareaRef?.current?.focus();
-        }
-
-        if (selectedItem) {
+        if (selectedItem && toolCursor.tool !== "select") {
             setSelectedItem(null);
         }
-    }, [selectedTool]);
+
+        if (toolCursor.tool === "text") {
+            textareaRef?.current?.focus();
+        }
+    }, [toolCursor]);
 
     useEffect(() => {
         if (textareaRef.current) {
@@ -562,6 +620,8 @@ export const Canvas = () => {
                     selectedElementId={selectedItem.id}
                     drawnElements={drawnElements}
                     panOffset={panOffset}
+                    resizeHandler={handleStartResizing}
+                    resize={handleResize}
                 />
             )}
 

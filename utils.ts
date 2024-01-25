@@ -1,5 +1,5 @@
 import { ElementAtPosition, PositionStatusType } from "./app/_components/canvas";
-import { DrawnElementType } from "./types";
+import { Coordinates, DrawnElementType, Position } from "./types";
 
 export const getSvgPathFromStroke = (stroke: number[][]) => {
     if (!stroke.length) return "";
@@ -134,4 +134,44 @@ export const getCoordinates = (
     const clientY = (event.clientY - panOffset.y * scale + scaleOffset.y) / scale;
 
     return { clientX, clientY };
+};
+
+export const adjustElementCoordinates = (element: DrawnElementType) => {
+    const { shape, x1, y1, x2, y2 } = element;
+    if (shape === "rectangle") {
+        const minX = Math.min(x1, x2);
+        const maxX = Math.max(x1, x2);
+        const minY = Math.min(y1, y2);
+        const maxY = Math.max(y1, y2);
+        return { x1: minX, y1: minY, x2: maxX, y2: maxY };
+    } else {
+        if (x1 < x2 || (x1 === x2 && y1 < y2)) {
+            return { x1, y1, x2, y2 };
+        } else {
+            return { x1: x2, y1: y2, x2: x1, y2: y1 };
+        }
+    }
+};
+
+export const onResize = (
+    position: Position,
+    clientX: number,
+    clientY: number,
+    coords: Coordinates
+): Coordinates => {
+    const { x1, y1, x2, y2 } = coords;
+
+    switch (position) {
+        case "tl":
+            return { x1: clientX, y1: clientY, x2, y2 };
+        case "tr":
+            return { x1, y1: clientY, x2: clientX, y2 };
+        case "bl":
+            return { x1: clientX, y1, x2, y2: clientY };
+        case "br":
+            return { x1, y1, x2: clientX, y2: clientY };
+
+        default:
+            return coords;
+    }
 };

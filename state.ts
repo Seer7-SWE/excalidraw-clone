@@ -43,6 +43,11 @@ export const cursorState = atom<CursorStateType>({
     default: "default",
 });
 
+export const toolCursorState = atom<{ tool: ToolType; cursor: CursorStateType }>({
+    key: "toolCursorState",
+    default: { tool: "select", cursor: "default" },
+});
+
 export const fontSizeState = atom<FontSizeType>({
     key: "fontSizeState",
     default: 18,

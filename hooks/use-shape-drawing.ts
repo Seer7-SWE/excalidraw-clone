@@ -25,7 +25,7 @@ interface ShapeReturnType {
 }
 
 const strokeWidthMap: Record<string, number> = {
-    thin: 3,
+    thin: 1,
     bold: 6,
     extrabold: 7,
 };
@@ -89,6 +89,7 @@ export const useShapeDrawing = (roughCanvas: RoughCanvas | null) => {
                 strokeWidth: strokeWidthMap[strokeWidth],
                 roughness: 0,
                 fill: fillColor === "#ebebeb" ? "" : fillColor,
+                fillStyle: "solid",
                 strokeLineDash: strokeStyleMap[strokeStyle],
 
                 ...options, // Override default options with provided options
@@ -140,6 +141,8 @@ export const useShapeDrawing = (roughCanvas: RoughCanvas | null) => {
                 strokeWidth: strokeWidthMap[strokeWidth],
                 roughness: 0,
                 fill: fillColor === "#ebebeb" ? "" : fillColor,
+                fillStyle: "solid",
+
                 ...options,
             }
         );

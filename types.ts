@@ -58,3 +58,11 @@ export type XYWH = {
     width: number;
     height: number;
 };
+
+export type Position = "tl" | "tr" | "bl" | "br";
+export type Coordinates = {
+    x1: number;
+    x2: number;
+    y1: number;
+    y2: number;
+};
