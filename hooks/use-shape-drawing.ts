@@ -25,7 +25,7 @@ interface ShapeReturnType {
 }
 
 const strokeWidthMap: Record<string, number> = {
-    thin: 1,
+    thin: 2,
     bold: 6,
     extrabold: 7,
 };

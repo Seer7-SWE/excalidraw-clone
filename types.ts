@@ -59,7 +59,7 @@ export type XYWH = {
     height: number;
 };
 
-export type Position = "tl" | "tr" | "bl" | "br";
+export type Position = "tl" | "tr" | "bl" | "br" | "tm" | "lm" | "rm" | "bm";
 export type Coordinates = {
     x1: number;
     x2: number;

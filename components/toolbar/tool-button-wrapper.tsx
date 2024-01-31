@@ -1,7 +1,7 @@
 "use client";
 
 import { useRecoilState } from "recoil";
-import { toolState, cursorState, toolCursorState } from "@/state";
+import { toolCursorState } from "@/state";
 import { ToolbarButton } from "./toolbar-button";
 import { CursorStateType, ToolType } from "@/types";
 
@@ -18,5 +18,12 @@ export const ToolButtonWrapper = ({ tool, icon, cursorStyle }: ToolButtonWrapper
         setToolCursor({ tool, cursor: cursorStyle });
     };
 
-    return <ToolbarButton active={toolCursor.tool === tool} onClick={onClick} icon={icon} />;
+    return (
+        <ToolbarButton
+            active={toolCursor.tool === tool}
+            onClick={onClick}
+            icon={icon}
+            label={tool}
+        />
+    );
 };

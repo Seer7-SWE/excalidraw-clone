@@ -19,9 +19,15 @@ import {
     getCoordinates,
     adjustElementCoordinates,
     onResize,
-} from "@/utils";
+} from "@/lib/utils";
 import { DrawnElementType, Position, ShapesType } from "@/types";
-import { fontFamilyState, fontSizeState, strokeWidthState, toolCursorState } from "@/state";
+import {
+    fontFamilyState,
+    fontSizeState,
+    strokeWidthState,
+    toolCursorState,
+    toolState,
+} from "@/state";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { Zoom } from "@/components/zoom";
 import { UndoRedo } from "@/components/undo-redo";
@@ -314,28 +320,15 @@ export const Canvas = () => {
     const onMouseUp = (event: React.MouseEvent) => {
         setIsMouseDown(false);
 
+        if (toolCursor.tool === "erase" || toolCursor.tool === "draw") return;
+
         if (toolCursor.cursor === "grab") {
             stopPanning();
         } else if (isDrawing) {
             stopFreehandDrawing();
         } else if (isDrawingShapes) {
             stopDrawingShapes();
-
-            // Set last drawn shape as selected element
-            const lastElement = drawnElements[drawnElements.length - 1];
-            const { x1, x2, y1, y2 } = adjustElementCoordinates(lastElement);
-            updateElementPosition(
-                lastElement.id,
-                x1,
-                y1,
-                x2,
-                y2,
-                lastElement.shape,
-                lastElement?.roughElement?.options
-            );
-
             setToolCursor({ tool: "select", cursor: "default" });
-            setSelectedItem(lastElement);
         } else if (resizing.isResizing) {
             // * A bug in Resizing
             // * Mouseup doesnt works properly,
@@ -343,44 +336,61 @@ export const Canvas = () => {
             // * Use new approach to fix it
             setResizing({ isResizing: false, corner: null });
         }
+
+        const lastElement = drawnElements[drawnElements.length - 1];
+        if (!lastElement) return;
+
+        // Setting last drawn shape as selected element
+
+        const { x1, x2, y1, y2 } = adjustElementCoordinates(lastElement);
+        updateElementPosition(
+            lastElement.id,
+            x1,
+            y1,
+            x2,
+            y2,
+            lastElement.shape,
+            lastElement?.roughElement?.options
+        );
+        setSelectedItem(lastElement);
     };
 
     const onMouseMove = (event: React.MouseEvent) => {
         if (resizing.isResizing && selectedItem) {
             const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
 
-            const coords = {
-                x1: selectedItem.x1, // This is not accurate TODO: Fix it
-                x2: selectedItem.x2,
-                y1: selectedItem.y1, // This is not accurate TODO: Fix it
-                y2: selectedItem.y2,
-            };
+            const { x1, x2, y1, y2 } = adjustElementCoordinates(selectedItem);
 
             if (!resizing.corner) return;
 
-            const { x1, x2, y1, y2 } = onResize(resizing.corner, clientX, clientY, coords);
+            const {
+                x1: newX1,
+                x2: newX2,
+                y1: newY1,
+                y2: newY2,
+            } = onResize(resizing.corner, clientX, clientY, {
+                x1,
+                x2,
+                y1,
+                y2,
+            });
+
             updateElementPosition(
                 selectedItem.id,
-                x1,
-                y1,
-                x2,
-                y2,
+                newX1,
+                newY1,
+                newX2,
+                newY2,
                 selectedItem.shape,
                 selectedItem.roughElement?.options
             );
 
-            // Update the selectedItem too
-            const updatedSelectedItem = {
-                ...selectedItem,
-                x1,
-                x2,
-                y1,
-                y2,
-            };
-            setSelectedItem(updatedSelectedItem);
+            return;
         }
 
         if (!isMouseDown) return;
+
+        if (toolCursor.tool === "erase") return;
 
         // Todo Make it like onMouseDown
         const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
@@ -485,12 +495,6 @@ export const Canvas = () => {
         setResizing({ isResizing: true, corner: position });
     };
 
-    const handleResize = (e: React.MouseEvent) => {
-        if (resizing.isResizing && selectedItem) {
-            onMouseMove(e);
-        }
-    };
-
     const onUndo = () => {
         undo();
     };
@@ -501,14 +505,12 @@ export const Canvas = () => {
 
     const zoomIn = () => {
         if (scale < 2) {
-            console.log("zoom in");
             setScale((prev) => prev + 0.1);
         }
     };
 
     const zoomOut = () => {
         if (scale > 0.5) {
-            console.log("zoom out");
             setScale((prev) => prev - 0.1);
         }
     };
@@ -549,6 +551,7 @@ export const Canvas = () => {
         }
     }, [panOffset.x, panOffset.y, drawnElements, strokeWidth, scale, setScaleOffset]);
 
+    // THis part might not be usefull
     useEffect(() => {
         if (canvasRef.current) {
             const canvas = canvasRef.current;
@@ -621,7 +624,7 @@ export const Canvas = () => {
                     drawnElements={drawnElements}
                     panOffset={panOffset}
                     resizeHandler={handleStartResizing}
-                    resize={handleResize}
+                    onMouseUp={onMouseUp}
                 />
             )}
 
