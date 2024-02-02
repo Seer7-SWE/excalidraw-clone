@@ -88,7 +88,7 @@ export const isWithInElement = (
                     Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2)) -
                     (Math.sqrt(Math.pow(c.x - a.x, 2) + Math.pow(c.y - a.y, 2)) +
                         Math.sqrt(Math.pow(b.x - c.x, 2) + Math.pow(b.y - c.y, 2)));
-                return Math.abs(offset) < 5;
+                return Math.abs(offset) < 15;
             });
             return isOnPath ? "boundary" : "outside";
 

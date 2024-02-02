@@ -90,9 +90,12 @@ export const drawOnCanvas = (
             break;
 
         default:
+            console.log("element before Error:", element);
             throw new Error(`Shape not recognized ${element.shape}`);
     }
 };
+
+// TODO FIX THE MOUSE OVER ON TOOLBUTTONS WHILE MOUSEDOWN BUG
 
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -319,40 +322,39 @@ export const Canvas = () => {
 
     const onMouseUp = (event: React.MouseEvent) => {
         setIsMouseDown(false);
-
-        if (toolCursor.tool === "erase" || toolCursor.tool === "draw") return;
+        if (toolCursor.tool === "erase") return;
 
         if (toolCursor.cursor === "grab") {
             stopPanning();
+            return;
         } else if (isDrawing) {
             stopFreehandDrawing();
+            return;
         } else if (isDrawingShapes) {
             stopDrawingShapes();
+
+            const lastElement = drawnElements[drawnElements.length - 1];
+            const { x1, x2, y1, y2 } = adjustElementCoordinates(lastElement);
+            updateElementPosition(
+                lastElement.id,
+                x1,
+                y1,
+                x2,
+                y2,
+                lastElement.shape,
+                lastElement?.roughElement?.options
+            );
+
+            const updatedLastElement = drawnElements[drawnElements.length - 1];
+
+            setToolCursor({ tool: "select", cursor: "default" });
+            setSelectedItem(updatedLastElement);
+
             setToolCursor({ tool: "select", cursor: "default" });
         } else if (resizing.isResizing) {
-            // * A bug in Resizing
-            // * Mouseup doesnt works properly,
-            // * Add the corners too in getElementWithInPosition
-            // * Use new approach to fix it
+            // * Slight bug in resizing related to hover cursor, fix it or change to new approach
             setResizing({ isResizing: false, corner: null });
         }
-
-        const lastElement = drawnElements[drawnElements.length - 1];
-        if (!lastElement) return;
-
-        // Setting last drawn shape as selected element
-
-        const { x1, x2, y1, y2 } = adjustElementCoordinates(lastElement);
-        updateElementPosition(
-            lastElement.id,
-            x1,
-            y1,
-            x2,
-            y2,
-            lastElement.shape,
-            lastElement?.roughElement?.options
-        );
-        setSelectedItem(lastElement);
     };
 
     const onMouseMove = (event: React.MouseEvent) => {

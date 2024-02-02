@@ -80,7 +80,6 @@ export const SelectionBox = memo(
                     }}
                 />
 
-                {/* TODO: MAKE THEM WORK !!!! */}
                 {/* Resize handlers  */}
                 {/* Top Left */}
                 <div

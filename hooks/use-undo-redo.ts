@@ -1,11 +1,25 @@
 "use client";
 
 import { DrawnElementType } from "@/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export const useUndoRedo = (initialState: DrawnElementType[]) => {
-    const [history, setHistory] = useState<DrawnElementType[][]>([initialState]);
+    const [history, setHistory] = useState<DrawnElementType[][]>(() => {
+        // Might change this to useEffect
+        const localData =
+            typeof window !== "undefined" && window.localStorage
+                ? localStorage.getItem("history")
+                : null;
+        return localData ? [JSON.parse(localData)] : [initialState];
+    });
+
     const [index, setIndex] = useState<number>(0);
+
+    useEffect(() => {
+        if (localStorage) {
+            localStorage.setItem("history", JSON.stringify(history[index]));
+        }
+    }, [history, index]);
 
     const push = (newState: DrawnElementType[], overwrite: boolean = false) => {
         if (overwrite) {
