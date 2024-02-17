@@ -71,9 +71,11 @@ export const useShapeDrawing = (roughCanvas: RoughCanvas | null) => {
         options?: ResolvedOptions,
         isSelected?: boolean
     ): ShapeReturnType => {
+        console.log({ id, x1, x2, y1, y2, options, isSelected });
+
         const borderRadius = 1;
 
-        const roughElement = roughCanvas?.generator.path(
+        const roughElement = roughCanvas?.generator?.path(
             `M${x1 + borderRadius} ${y1} 
         Q${x1} ${y1}, ${x1} ${y1 + borderRadius} 
         L${x1} ${y2 - borderRadius} 

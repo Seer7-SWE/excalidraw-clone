@@ -19,6 +19,7 @@ import {
     getCoordinates,
     adjustElementCoordinates,
     onResize,
+    drawOnCanvas,
 } from "@/lib/utils";
 import { DrawnElementType, Position, ShapesType } from "@/types";
 import {
@@ -39,65 +40,10 @@ export type ElementAtPosition =
     | { positionStatus: "inside" | "boundary"; element: DrawnElementType }
     | { positionStatus: "outside"; element: null };
 
-export const drawOnCanvas = (
-    element: DrawnElementType,
-    roughCanvas: RoughCanvas,
-    context: CanvasRenderingContext2D
-) => {
-    switch (element.shape) {
-        case "circle":
-        case "line":
-        case "rectangle":
-        case "square":
-        case "arrow":
-            if (element.roughElement !== undefined) {
-                roughCanvas.draw(element.roughElement);
-            }
-
-            break;
-
-        case "pencil":
-            if (element.points) {
-                const stroke = getSvgPathFromStroke(
-                    getStroke(element.points, element.strokeOptions)
-                );
-
-                context.fillStyle = element?.strokeOptions?.color || "";
-                context.fill(new Path2D(stroke));
-            }
-
-            break;
-        case "text":
-            if (element.textValue) {
-                const fontSize = element.fontSize ? element.fontSize : 18;
-                context.textBaseline = "top";
-                context.textAlign = element.textAlign || "left";
-                context.font = `${fontSize}px ${element.fontFamily}`;
-
-                // TODO: Make this accurate
-
-                // Split the text into lines
-                // const lines = element.textValue.split("\n");
-
-                // // // Draw each line separately
-                // for (let i = 0; i < lines.length; i++) {
-                //     context.fillText(lines[i], element.x1 - 1.5, element.y1 + 5.7 + i * fontSize);
-                // }
-
-                context.fillText(element.textValue, element.x1 - 1.5, element.y1 + 5.7);
-            }
-
-            break;
-
-        default:
-            console.log("element before Error:", element);
-            throw new Error(`Shape not recognized ${element.shape}`);
-    }
-};
-
 // TODO FIX THE MOUSE OVER ON TOOLBUTTONS WHILE MOUSEDOWN BUG
+// i.e. hover over tool buttons while mouse down
 
-export const Canvas = () => {
+export const Canvas = ({ startCollab }: { startCollab: () => void }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const prevSelectedItem = useRef<DrawnElementType | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -156,6 +102,8 @@ export const Canvas = () => {
             drawnElementsCopy[id] = updatedShape;
             push(drawnElementsCopy, true);
         }
+
+        return updatedShape;
     };
 
     const handleShapeDraw = (shapeType: ShapesType, event: React.MouseEvent) => {
@@ -306,12 +254,10 @@ export const Canvas = () => {
     };
 
     const onMouseDown = (event: React.MouseEvent) => {
-        console.log("mousedown");
-
         setIsMouseDown(true);
-
         setTimeout(() => {
             // Using settimeout to make blur event fires before this
+            // i.e. blur event that works as submit for text element
             event.preventDefault();
 
             if (isWriting && toolCursor.tool !== "select") return; // If already writing
@@ -360,8 +306,9 @@ export const Canvas = () => {
     const onMouseMove = (event: React.MouseEvent) => {
         if (resizing.isResizing && selectedItem) {
             const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
+            const currentSelectedItem = drawnElements[selectedItem.id];
 
-            const { x1, x2, y1, y2 } = adjustElementCoordinates(selectedItem);
+            const { x1, x2, y1, y2 } = adjustElementCoordinates(currentSelectedItem);
 
             if (!resizing.corner) return;
 
@@ -376,7 +323,6 @@ export const Canvas = () => {
                 y1,
                 y2,
             });
-
             updateElementPosition(
                 selectedItem.id,
                 newX1,
@@ -490,6 +436,8 @@ export const Canvas = () => {
                     roughElement?.options
                 );
             }
+
+            // Once moving is done, set the selectedItem to new item
         }
     };
 
@@ -663,6 +611,10 @@ export const Canvas = () => {
                 <Zoom scale={scale} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} />
                 <UndoRedo canRedo={canRedo} canUndo={canUndo} onUndo={onUndo} onRedo={onRedo} />
             </div>
+            {/* Hide button if there is already a session */}
+            <button onClick={startCollab} className="absolute z-50 top-10 right-10">
+                start
+            </button>
         </>
     );
 };

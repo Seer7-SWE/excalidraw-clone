@@ -1,13 +1,5 @@
-import { Toolbar } from "@/components/toolbar";
-import { Canvas } from "../_components/canvas";
-import { ToolbarMenu } from "@/components/toolbar-menu";
+import { CanvasWrapper } from "../_components/canvas-wrapper";
 
 export default function Home() {
-    return (
-        <>
-            <Toolbar />
-            <ToolbarMenu />
-            <Canvas />
-        </>
-    );
+    return <CanvasWrapper />;
 }

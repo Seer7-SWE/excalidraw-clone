@@ -3,8 +3,6 @@
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "./ui/button";
 
-import { useZoom } from "@/hooks/use-zoom";
-
 interface ZoomProps {
     scale: number;
     zoomIn: () => void;

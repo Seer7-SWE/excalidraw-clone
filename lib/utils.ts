@@ -7,6 +7,8 @@ export function cn(...inputs: ClassValue[]) {
 
 import { ElementAtPosition, PositionStatusType } from "@/app/_components/canvas";
 import { Coordinates, DrawnElementType, Position } from "@/types";
+import { RoughCanvas } from "roughjs/bin/canvas";
+import getStroke from "perfect-freehand";
 
 export const getSvgPathFromStroke = (stroke: number[][]) => {
     if (!stroke.length) return "";
@@ -188,5 +190,81 @@ export const onResize = (
 
         default:
             return coords;
+    }
+};
+
+export const generateUUID = () => {
+    // Public Domain/MIT
+    var d = new Date().getTime(); //Timestamp
+    var d2 =
+        (typeof performance !== "undefined" && performance.now && performance.now() * 1000) || 0; //Time in microseconds since page-load or 0 if unsupported
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16; //random number between 0 and 16
+        if (d > 0) {
+            //Use timestamp until depleted
+            r = (d + r) % 16 | 0;
+            d = Math.floor(d / 16);
+        } else {
+            //Use microseconds since page-load if supported
+            r = (d2 + r) % 16 | 0;
+            d2 = Math.floor(d2 / 16);
+        }
+        return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+    });
+};
+
+export const drawOnCanvas = (
+    element: DrawnElementType,
+    roughCanvas: RoughCanvas,
+    context: CanvasRenderingContext2D
+) => {
+    switch (element.shape) {
+        case "circle":
+        case "line":
+        case "rectangle":
+        case "square":
+        case "arrow":
+            if (element.roughElement !== undefined) {
+                roughCanvas.draw(element.roughElement);
+            }
+
+            break;
+
+        case "pencil":
+            if (element.points) {
+                const stroke = getSvgPathFromStroke(
+                    getStroke(element.points, element.strokeOptions)
+                );
+
+                context.fillStyle = element?.strokeOptions?.color || "";
+                context.fill(new Path2D(stroke));
+            }
+
+            break;
+        case "text":
+            if (element.textValue) {
+                const fontSize = element.fontSize ? element.fontSize : 18;
+                context.textBaseline = "top";
+                context.textAlign = element.textAlign || "left";
+                context.font = `${fontSize}px ${element.fontFamily}`;
+
+                // TODO: Make this accurate
+
+                // Split the text into lines
+                // const lines = element.textValue.split("\n");
+
+                // // // Draw each line separately
+                // for (let i = 0; i < lines.length; i++) {
+                //     context.fillText(lines[i], element.x1 - 1.5, element.y1 + 5.7 + i * fontSize);
+                // }
+
+                context.fillText(element.textValue, element.x1 - 1.5, element.y1 + 5.7);
+            }
+
+            break;
+
+        default:
+            console.log("element before Error:", element);
+            throw new Error(`Shape not recognized ${element.shape}`);
     }
 };
