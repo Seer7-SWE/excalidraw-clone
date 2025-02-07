@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { selector, useRecoilState } from "recoil";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useRecoilState } from "recoil";
 
 import { ResolvedOptions } from "roughjs/bin/core";
 import { RoughCanvas } from "roughjs/bin/canvas";
-import getStroke from "perfect-freehand";
 import rough from "roughjs";
 
 import { usePanning } from "@/hooks/use-panning";
@@ -13,7 +12,6 @@ import { useShapeDrawing } from "@/hooks/use-shape-drawing";
 import { useFreehand } from "@/hooks/use-freehand";
 
 import {
-    getSvgPathFromStroke,
     getElementAtPosition,
     eraseElement,
     getCoordinates,
@@ -22,13 +20,7 @@ import {
     drawOnCanvas,
 } from "@/lib/utils";
 import { DrawnElementType, Position, ShapesType } from "@/types";
-import {
-    fontFamilyState,
-    fontSizeState,
-    strokeWidthState,
-    toolCursorState,
-    toolState,
-} from "@/state";
+import { fontFamilyState, fontSizeState, strokeWidthState, toolCursorState } from "@/state";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { Zoom } from "@/components/zoom";
 import { UndoRedo } from "@/components/undo-redo";
@@ -43,7 +35,9 @@ export type ElementAtPosition =
 // TODO FIX THE MOUSE OVER ON TOOLBUTTONS WHILE MOUSEDOWN BUG
 // i.e. hover over tool buttons while mouse down
 
-export const Canvas = ({ startCollab }: { startCollab: () => void }) => {
+// Todo fix the localstorage item mutation
+
+export const Canvas = ({}: { startCollab?: () => void }) => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const prevSelectedItem = useRef<DrawnElementType | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -612,9 +606,9 @@ export const Canvas = ({ startCollab }: { startCollab: () => void }) => {
                 <UndoRedo canRedo={canRedo} canUndo={canUndo} onUndo={onUndo} onRedo={onRedo} />
             </div>
             {/* Hide button if there is already a session */}
-            <button onClick={startCollab} className="absolute z-50 top-10 right-10">
+            {/* <button onClick={startCollab} className="absolute z-50 top-10 right-10">
                 start
-            </button>
+            </button> */}
         </>
     );
 };
