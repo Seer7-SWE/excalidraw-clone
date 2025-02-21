@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Montserrat, Roboto_Mono, Epilogue } from "next/font/google";
+import { Inter, Montserrat, Roboto_Mono } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,6 @@ const inter = Inter({ subsets: ["latin"] });
 
 const montserrat = Montserrat({ subsets: ["latin"] });
 const robotoMono = Roboto_Mono({ subsets: ["latin"] });
-const epilogue = Epilogue({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
     title: "Excalidraw clone",
@@ -23,7 +22,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     inter.className,
                     montserrat.className,
                     robotoMono.className
-                    // epilogue.className
                 )}
             >
                 {children}
