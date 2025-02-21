@@ -605,10 +605,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
                 <Zoom scale={scale} zoomIn={zoomIn} zoomOut={zoomOut} resetZoom={resetZoom} />
                 <UndoRedo canRedo={canRedo} canUndo={canUndo} onUndo={onUndo} onRedo={onRedo} />
             </div>
-            {/* Hide button if there is already a session */}
-            {/* <button onClick={startCollab} className="absolute z-50 top-10 right-10">
-                start
-            </button> */}
         </>
     );
 };

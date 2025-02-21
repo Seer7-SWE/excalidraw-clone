@@ -66,3 +66,13 @@ export type Coordinates = {
     y1: number;
     y2: number;
 };
+
+export type PositionStatus = "inside" | "outside" | "boundary";
+export type ElementAtPosition =
+    | { positionStatus: "inside" | "boundary"; element: DrawnElementType }
+    | { positionStatus: "outside"; element: null };
+
+export type ToolCursorState = {
+    tool: ShapesType | "select" | "erase";
+    cursor: string;
+};
