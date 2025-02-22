@@ -1,16 +1,16 @@
 import { adjustElementCoordinates } from "@/lib/utils";
-import { DrawnElementType, Position, XYWH } from "@/types";
+import { CanvasElement, DrawnElementType, Position, XYWH } from "@/types";
 import React, { memo, useCallback, useMemo } from "react";
 
 type SelectionBoxProps = {
     selectedElementId: number;
-    drawnElements: DrawnElementType[];
+    drawnElements: CanvasElement[];
     panOffset: { x: number; y: number };
     resizeHandler: (event: React.MouseEvent, position: Position) => void;
     onMouseUp: (event: React.MouseEvent) => void;
 };
 
-function boundingBox(layers: DrawnElementType, panOffset: { x: number; y: number }): XYWH | null {
+function boundingBox(layers: CanvasElement, panOffset: { x: number; y: number }): XYWH | null {
     if (!layers) return null;
 
     let left, right, top, bottom;

@@ -19,18 +19,15 @@ import {
     onResize,
     drawOnCanvas,
 } from "@/lib/utils";
-import { DrawnElementType, Position, ShapesType } from "@/types";
+import { CanvasElement, Position, ShapeType } from "@/types";
 import { fontFamilyState, fontSizeState, strokeWidthState, toolCursorState } from "@/state";
 import { useUndoRedo } from "@/hooks/use-undo-redo";
 import { Zoom } from "@/components/zoom";
 import { UndoRedo } from "@/components/undo-redo";
 import { SelectionBox } from "@/components/selection-box";
+import { useCanvasState } from "@/hooks/use-canvas-state";
 
 export type PositionStatusType = "inside" | "outside" | "boundary";
-
-export type ElementAtPosition =
-    | { positionStatus: "inside" | "boundary"; element: DrawnElementType }
-    | { positionStatus: "outside"; element: null };
 
 // TODO FIX THE MOUSE OVER ON TOOLBUTTONS WHILE MOUSEDOWN BUG
 // i.e. hover over tool buttons while mouse down
@@ -38,14 +35,18 @@ export type ElementAtPosition =
 // Todo fix the localstorage item mutation
 
 export const Canvas = ({}: { startCollab?: () => void }) => {
+    const { getScaledCoordinates } = useCanvasState();
+
+    // const {} = useTextEditing
+
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const prevSelectedItem = useRef<DrawnElementType | null>(null);
+    const prevSelectedItem = useRef<CanvasElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
     const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
     const [roughCanvas, setRoughCanvas] = useState<RoughCanvas | null>(null);
     const [selectedItem, setSelectedItem] = useState<
-        (DrawnElementType & { offsetsX?: number[]; offsetsY?: number[] }) | null
+        (CanvasElement & { offsetsX?: number[]; offsetsY?: number[] }) | null
     >(null);
 
     const [scale, setScale] = useState(1);
@@ -86,7 +87,7 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
         y1: number,
         x2: number,
         y2: number,
-        shape: ShapesType,
+        shape: ShapeType,
         options?: ResolvedOptions
     ) => {
         const updatedShape = drawShapes(id, x1, y1, x2, y2, shape, options);
@@ -100,7 +101,7 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
         return updatedShape;
     };
 
-    const handleShapeDraw = (shapeType: ShapesType, event: React.MouseEvent) => {
+    const handleShapeDraw = (shapeType: ShapeType, event: React.MouseEvent) => {
         const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
         const newId = drawnElements.length;
 
@@ -121,7 +122,7 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
                 scaleOffset
             );
 
-            let textElement: DrawnElementType = {
+            let textElement: CanvasElement = {
                 id: drawnElements.length,
                 x1: clientX,
                 y1: clientY,
@@ -203,7 +204,7 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
                 const offsetX = clientX - element.x1;
                 const offsetY = clientY - element.y1;
 
-                setSelectedItem({ ...element, offsetX, offsetY });
+                setSelectedItem({ ...element, offsetX });
             } else if (positionStatus === "outside" && !element && selectedItem) {
                 setSelectedItem(null);
             }
@@ -217,8 +218,9 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
 
             const pencilDraw = drawFreehand(newId, clientX, clientY);
 
-            const pencilDrawnElement: DrawnElementType = {
+            const pencilDrawnElement: CanvasElement = {
                 ...pencilDraw,
+                shape: "pencil",
                 roughElement: undefined,
                 x1: clientX,
                 x2: clientX,
@@ -344,7 +346,7 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
 
             if (!points) return;
 
-            const updatedShape: DrawnElementType = {
+            const updatedShape: CanvasElement = {
                 ...drawnElements[index],
                 points: [...points, { x: clientX, y: clientY }],
             };

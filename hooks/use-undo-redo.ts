@@ -1,10 +1,10 @@
 "use client";
 
-import { DrawnElementType } from "@/types";
+import { CanvasElement } from "@/types";
 import { useEffect, useState } from "react";
 
-export const useUndoRedo = (initialState: DrawnElementType[]) => {
-    const [history, setHistory] = useState<DrawnElementType[][]>(() => {
+export const useUndoRedo = (initialState: CanvasElement[]) => {
+    const [history, setHistory] = useState<CanvasElement[][]>(() => {
         // Might change this to useEffect
         const localData =
             typeof window !== "undefined" && window.localStorage
@@ -21,7 +21,7 @@ export const useUndoRedo = (initialState: DrawnElementType[]) => {
         }
     }, [history, index]);
 
-    const push = (newState: DrawnElementType[], overwrite: boolean = false) => {
+    const push = (newState: CanvasElement[], overwrite: boolean = false) => {
         if (overwrite) {
             const historyCopy = [...history];
             historyCopy[index] = newState;

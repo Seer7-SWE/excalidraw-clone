@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
     return twMerge(clsx(inputs));
 }
 
-import { ElementAtPosition, PositionStatusType } from "@/app/_components/canvas";
-import { Coordinates, DrawnElementType, Position } from "@/types";
+import { PositionStatusType } from "@/app/_components/canvas";
+import { BoundingBox, CanvasElement, Position, ElementAtPosition } from "@/types";
 import { RoughCanvas } from "roughjs/bin/canvas";
 import getStroke from "perfect-freehand";
 
@@ -29,7 +29,7 @@ export const getSvgPathFromStroke = (stroke: number[][]) => {
 export const isWithInElement = (
     x: number,
     y: number,
-    element: DrawnElementType,
+    element: CanvasElement,
     context: CanvasRenderingContext2D | null = null
 ): PositionStatusType => {
     let { shape, x1, x2, y1, y2 } = element;
@@ -115,7 +115,7 @@ export const isWithInElement = (
 export const getElementAtPosition = (
     x: number,
     y: number,
-    elements: DrawnElementType[],
+    elements: CanvasElement[],
     context: CanvasRenderingContext2D | null
 ): ElementAtPosition => {
     for (let element of elements) {
@@ -128,7 +128,7 @@ export const getElementAtPosition = (
     return { positionStatus: "outside", element: null };
 };
 
-export const eraseElement = (toErase: DrawnElementType, from: DrawnElementType[]) => {
+export const eraseElement = (toErase: CanvasElement, from: CanvasElement[]) => {
     const { id: toEraseId } = toErase;
     return from.filter(({ id }) => id !== toEraseId);
 };
@@ -145,7 +145,7 @@ export const getCoordinates = (
     return { clientX, clientY };
 };
 
-export const adjustElementCoordinates = (element: DrawnElementType) => {
+export const adjustElementCoordinates = (element: CanvasElement) => {
     const { shape, x1, y1, x2, y2 } = element;
     if (shape === "rectangle") {
         const minX = Math.min(x1, x2);
@@ -166,8 +166,8 @@ export const onResize = (
     position: Position,
     clientX: number,
     clientY: number,
-    coords: Coordinates
-): Coordinates => {
+    coords: BoundingBox
+): BoundingBox => {
     const { x1, y1, x2, y2 } = coords;
 
     switch (position) {
@@ -214,7 +214,7 @@ export const generateUUID = () => {
 };
 
 export const drawOnCanvas = (
-    element: DrawnElementType,
+    element: CanvasElement,
     roughCanvas: RoughCanvas,
     context: CanvasRenderingContext2D
 ) => {
@@ -233,7 +233,7 @@ export const drawOnCanvas = (
         case "pencil":
             if (element.points) {
                 const stroke = getSvgPathFromStroke(
-                    getStroke(element.points, element.strokeOptions)
+                    getStroke(element.points, element?.strokeOptions)
                 );
 
                 context.fillStyle = element?.strokeOptions?.color || "";

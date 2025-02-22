@@ -21,7 +21,7 @@ export type ToolType =
     | "text"
     | "arrow";
 
-export type ShapesType = "rectangle" | "circle" | "square" | "line" | "pencil" | "text" | "arrow";
+export type ShapeType = "rectangle" | "circle" | "square" | "line" | "pencil" | "text" | "arrow";
 export type Point = { x: number; y: number; pressure?: number };
 
 export type DrawnElementType = {
@@ -31,7 +31,7 @@ export type DrawnElementType = {
     x2: number;
     y2: number;
     roughElement: Drawable | undefined;
-    shape: ShapesType;
+    // shape: ShapesType;
     points?: Point[];
     textValue?: string;
 
@@ -43,6 +43,30 @@ export type DrawnElementType = {
     textAlign?: TextAlignType;
     fontSize?: FontSizeType;
     fontFamily?: FontFamilyType;
+};
+
+export type CanvasElement = {
+    id: number;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    shape: ShapeType;
+    roughElement?: Drawable;
+    points?: Point[];
+    textValue?: string;
+    textAlign?: TextAlignType;
+    fontSize?: number;
+    fontFamily?: string;
+    strokeOptions?: Record<string, any>;
+    offsetX?: number;
+    offsetY?: number;
+};
+
+export type StrokeOptions = {
+    color: string;
+    width: number;
+    style: "solid" | "dashed" | "dotted";
 };
 
 export type FontSizeType = 18 | 20 | 24 | 26;
@@ -61,18 +85,18 @@ export type XYWH = {
 
 export type Position = "tl" | "tr" | "bl" | "br" | "tm" | "lm" | "rm" | "bm";
 export type Coordinates = {
-    x1: number;
-    x2: number;
-    y1: number;
-    y2: number;
+    x: number;
+    y: number;
 };
 
 export type PositionStatus = "inside" | "outside" | "boundary";
 export type ElementAtPosition =
-    | { positionStatus: "inside" | "boundary"; element: DrawnElementType }
+    | { positionStatus: "inside" | "boundary"; element: CanvasElement }
     | { positionStatus: "outside"; element: null };
 
 export type ToolCursorState = {
-    tool: ShapesType | "select" | "erase";
+    tool: ShapeType | "select" | "erase";
     cursor: string;
 };
+
+export type BoundingBox = { x1: number; y1: number; x2: number; y2: number };
