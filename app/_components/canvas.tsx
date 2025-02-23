@@ -35,10 +35,6 @@ export type PositionStatusType = "inside" | "outside" | "boundary";
 // Todo fix the localstorage item mutation
 
 export const Canvas = ({}: { startCollab?: () => void }) => {
-    const { getScaledCoordinates } = useCanvasState();
-
-    // const {} = useTextEditing
-
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const prevSelectedItem = useRef<CanvasElement | null>(null);
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -52,7 +48,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
     const [scale, setScale] = useState(1);
     const [scaleOffset, setScaleOffset] = useState({ x: 0, y: 0 });
 
-    // TODO: Move them in a single action state
     const [isWriting, setIsWriting] = useState<boolean>(false);
     const [resizing, setResizing] = useState<{ isResizing: boolean; corner: Position | null }>({
         isResizing: false,
@@ -336,7 +331,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
 
         if (toolCursor.tool === "erase") return;
 
-        // Todo Make it like onMouseDown
         const { clientX, clientY } = getCoordinates(event, panOffset, scale, scaleOffset);
         if (drawnElements.length < 0) return;
 
@@ -354,7 +348,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
             const drawnElementsCopy = [...drawnElements];
             if (updatedShape) {
                 drawnElementsCopy[index] = updatedShape;
-                // setDrawnElements(drawnElementsCopy);
                 push(drawnElementsCopy, true);
             }
         } else if (panning) {
@@ -367,7 +360,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
             const drawnElementsCopy = [...drawnElements];
             if (updatedShape) {
                 drawnElementsCopy[index] = updatedShape;
-                // setDrawnElements(drawnElementsCopy);
                 push(drawnElementsCopy, true);
             }
         } else if (selectedItem) {
@@ -432,8 +424,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
                     roughElement?.options
                 );
             }
-
-            // Once moving is done, set the selectedItem to new item
         }
     };
 
@@ -497,7 +487,6 @@ export const Canvas = ({}: { startCollab?: () => void }) => {
         }
     }, [panOffset.x, panOffset.y, drawnElements, strokeWidth, scale, setScaleOffset]);
 
-    // THis part might not be usefull
     useEffect(() => {
         if (canvasRef.current) {
             const canvas = canvasRef.current;
