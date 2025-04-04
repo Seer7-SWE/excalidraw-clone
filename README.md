@@ -1,4 +1,4 @@
-Welcome to the Excalidraw Clone App!.
+Welcome to the Excalidraw Clone
 
 ![App-Poster](./assets/excalidraw-clone-poster.jpeg)
 
@@ -54,4 +54,3 @@ Follow these steps to get the Excalidraw Clone App running on your local machine
 
 Your thoughts on this app are welcome! If you have any suggestions or run into any issues, please let me know.
 
-Thank you for checking out this Excalidraw Clone App!"
